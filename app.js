@@ -6,23 +6,32 @@ var logger = require('morgan');
 const mongoose = require("mongoose")
 var indexRouter = require('./routes/index');
 var app = express();
-var RabbitMQ = require('rabbitmq-node');
+var amqp = require('amqplib/callback_api');
 
-var rabbitmq = new RabbitMQ('amqp://localhost');
 
-rabbitmq.on('message', function(channel, message) {
-  console.log(message);
+amqp.connect('amqp://localhost', function(error0, connection) {
+  if (error0) {
+    throw error0;
+  }
+  connection.createChannel(function(error1, channel) {
+    if (error1) {
+      throw error1;
+    }
+    var queue = 'trak';
+
+    channel.assertQueue(queue, {
+      durable: false
+    });
+
+    console.log(" [*] Waiting for messages in %s. To exit press CTRL+C", queue);
+    channel.consume(queue, function(msg) {
+      console.log(" [x] Received %s", msg.content.toString());
+    }, {
+        noAck: true
+      });
+
+  });
 });
-
-rabbitmq.on('error', function(err) {
-  console.error(err);
-});
-
-rabbitmq.on('logs', function(print_log) {
-  console.info(print_log);
-});
-
-rabbitmq.subscribe('trak');
 
 mongoose
 	.connect("mongodb+srv://shubham:123@cluster0.ot27c.mongodb.net/myFirstDatabase?retryWrites=true&w=majority", { useNewUrlParser: true })
